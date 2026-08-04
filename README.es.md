@@ -83,7 +83,7 @@ Aquí está lo que de verdad importa, y lo que puedes verificar tú mismo en el 
 - ✓ Cálculo de la loss (cross-entropy)
 - ✓ Backpropagation (gradientes derivados a pelo)
 - ✓ Actualización de pesos (SGD con momentum + cosine LR)
-- ✓ Guardado del mejor modelo en flash (LittleFS)
+- ✓ Guardado de un checkpoint en flash (LittleFS)
 - ✓ Generación de texto con los pesos aprendidos
 
 **Fuera del ESP32-S3:**
@@ -95,7 +95,15 @@ No hay nada nuevo aquí. Es un transformer minúsculo pero completo: un bloque, 
 
 ### El backprop, a mano
 
-Aquí no hay PyTorch ni autograd. Cada derivada del forward pass está escrita explícitamente en C. Para asegurarnos de que no había errores, contrastamos numéricamente esos gradientes contra una implementación de referencia en PyTorch (*gradient checking*) antes de meterle mano al chip. Es la parte más delicada y la que más mola ver funcionando.
+Aquí no hay PyTorch ni autograd. Cada derivada del forward pass está escrita explícitamente en C. Para asegurarnos de que no había errores, cada gradiente se contrasta contra una diferencia finita centrada del forward — peor error relativo **1.07e-08**, frente a un umbral de 1e-4. Además, el kernel se compiló con ESP-IDF y se ejecutó bajo la emulación xtensa de QEMU antes de tocar el silicio real.
+
+Las dos comprobaciones están en [`tests/`](tests/), y corren contra el mismo header que publica este repo, así que no hace falta que te fíes de nuestra palabra:
+
+```bash
+cc -O2 -DHANDGPT_DOUBLE -DNV=11 -DNC=16 -DNT=8 tests/gradcheck.c -lm -o gradcheck && ./gradcheck
+```
+
+Es la parte más delicada y la que más mola ver funcionando.
 
 ### La proeza no son los parámetros: es la memoria
 
@@ -120,7 +128,7 @@ pio run -t upload
 pio device monitor
 ```
 
-Y ya está. El chip arranca con pesos aleatorios, entrena, guarda el mejor modelo en flash y, al siguiente arranque, lo carga y genera. Si lo desenchufas a mitad, pierdes lo aprendido desde el último checkpoint; si lo desenchufas después de terminar, el cerebro sigue ahí.
+Y ya está. El chip arranca con pesos aleatorios, entrena y va guardando el checkpoint con la menor media móvil de loss de entrenamiento que ha visto. (No hay validación, así que es un checkpoint de training loss, no el "mejor modelo" en sentido estricto.) Al siguiente arranque lo carga y genera. Si lo desenchufas a mitad, pierdes lo aprendido desde el último checkpoint; si lo desenchufas después de terminar, el cerebro sigue ahí.
 
 **Un aviso:** esto tarda horas. Muchas. Incluso días. No es un bug: es entrenar un transformer de cero en un ESP32-S3 de 8 pavos.
 
@@ -158,6 +166,8 @@ La media móvil es la que importa: la loss de cada batch salta mucho (depende de
 
 ![Klingon generado](assets/klingon-output.jpg)
 
+*(Sí, la pantalla dice KlinGPT. El proyecto pasó por un par de nombres peores antes de llamarse Qapla', y KlinGPT se quedó en la OLED porque es el primer eslabón de la cadena.)*
+
 ```
 hIngan motlh puS ruq tuq DujDaq SISwI' nge'vI'
 vIn SuvwI' yIvwI' qarghtaHvIS SIchoH
@@ -170,9 +180,9 @@ No es Klingon con sentido pleno —ya avisamos—, pero mira la morfología:
 - **`qarghtaHvIS`** lleva `-taHvIS` (*mientras*, continuo + adverbial), un sufijo compuesto pegado donde toca.
 - Y **`hIngan`** se queda a dos letras de `tlhIngan`, que es literalmente la palabra "klingon".
 
-Otras palabras están bien formadas pero no existen: el modelo aprendió las **reglas**, no el diccionario. Que es exactamente lo que dijimos que haría.
+Otras palabras están bien formadas pero no existen. A este modelo nadie le dio reglas, ni etiquetas gramaticales, ni segmentación morfológica: solo texto en crudo, carácter a carácter. De ahí sacó regularidad suficiente para recombinar raíces y sufijos en formas que se sostienen.
 
-Nadie le enseñó esos sufijos. Los dedujo solo, carácter a carácter, dentro de un micro de 8 pavos.
+Cuánto de eso es generalización de verdad y cuánto es eco estadístico del corpus, no te lo podemos decir con dos muestras. Es un modelo de 319K parámetros entrenado con un corpus pequeño: habrá mezcla. Lo que no está en discusión es dónde ocurrió: dentro de un micro de 8 pavos, sin ayuda de nadie.
 
 ## Y de aquí, ¿a dónde?
 

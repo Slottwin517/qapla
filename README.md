@@ -83,7 +83,7 @@ Here's what really matters, and what you can verify for yourself in the code. Th
 - ✓ Loss computation (cross-entropy)
 - ✓ Backpropagation (gradients derived by hand)
 - ✓ Weight updates (SGD with momentum + cosine LR)
-- ✓ Saving the best model to flash (LittleFS)
+- ✓ Saving a checkpoint to flash (LittleFS)
 - ✓ Text generation with the learned weights
 
 **Outside the ESP32-S3:**
@@ -95,7 +95,15 @@ There's nothing new here. It's a tiny but complete transformer: one block, singl
 
 ### The backprop, by hand
 
-There's no PyTorch and no autograd here. Every derivative of the forward pass is written out explicitly in C. To make sure there were no mistakes, we checked those gradients numerically against a PyTorch reference implementation (*gradient checking*) before laying a finger on the chip. It's the most delicate part and the most fun to watch working.
+There's no PyTorch and no autograd here. Every derivative of the forward pass is written out explicitly in C. To make sure there were no mistakes, every gradient is checked against a centred finite difference of the forward pass — worst relative error **1.07e-08**, against a threshold of 1e-4. The kernel was also built with ESP-IDF and run under QEMU's xtensa emulation before touching real silicon.
+
+Both checks are in [`tests/`](tests/), and they run against the header this repo publishes, so you don't have to take our word for any of it:
+
+```bash
+cc -O2 -DHANDGPT_DOUBLE -DNV=11 -DNC=16 -DNT=8 tests/gradcheck.c -lm -o gradcheck && ./gradcheck
+```
+
+It's the most delicate part and the most fun to watch working.
 
 ### The feat isn't the parameters: it's the memory
 
@@ -120,7 +128,7 @@ pio run -t upload
 pio device monitor
 ```
 
-And that's it. The chip starts with random weights, trains, saves the best model to flash and, on the next boot, loads it and generates. Unplug it halfway through and you lose whatever it learned since the last checkpoint; unplug it after it's done and the brain is still there.
+And that's it. The chip starts with random weights, trains, and periodically saves the checkpoint with the lowest training-loss moving average it has seen. (There's no validation split, so that's a training-loss checkpoint, not a "best model" in the strict sense.) On the next boot it loads it and generates. Unplug it halfway through and you lose whatever it learned since the last checkpoint; unplug it after it's done and the brain is still there.
 
 **One warning:** this takes hours. Many. Even days. It's not a bug: it's training a transformer from scratch on an eight-buck ESP32-S3.
 
@@ -158,6 +166,8 @@ The moving average is the one that matters: each batch's loss jumps around a lot
 
 ![Generated Klingon](assets/klingon-output.jpg)
 
+*(Yes, the screen says KlinGPT. The project went through a couple of worse names before settling on Qapla', and KlinGPT stayed on the OLED because it's the first link in the chain.)*
+
 ```
 hIngan motlh puS ruq tuq DujDaq SISwI' nge'vI'
 vIn SuvwI' yIvwI' qarghtaHvIS SIchoH
@@ -170,9 +180,9 @@ It's not fully meaningful Klingon — we did warn you — but look at the morpho
 - **`qarghtaHvIS`** carries `-taHvIS` (*while*, continuous + adverbial), a compound suffix stuck exactly where it belongs.
 - And **`hIngan`** lands two letters short of `tlhIngan`, which is literally the word for "Klingon".
 
-Other words are well formed but don't exist: the model learned the **rules**, not the dictionary. Which is exactly what we said it would do.
+Other words are well formed but don't exist. Nobody gave the model rules, grammatical labels or morphological segmentation — just raw text, character by character. From that it picked up enough regularity to recombine roots and suffixes into shapes that hold together.
 
-Nobody taught it those suffixes. It worked them out on its own, character by character, inside an eight-buck micro.
+How much of that is genuine generalisation and how much is statistical echo of the corpus, we can't tell you from two samples. It's a 319K-parameter model trained on a small corpus: expect a mix. What's not in question is where it happened — inside an eight-buck micro, with nobody's help.
 
 ## And from here, where?
 
