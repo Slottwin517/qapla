@@ -1,0 +1,24 @@
+# PlatformIO build system
+.pio/
+.pioenvs/
+.piolibdeps/
+
+# Build artifacts
+*.bin
+*.elf
+*.o
+
+# The corpus is NOT published on purpose — bring your own.
+# See CORPUS.md for how to generate src/corpus_klingon.h from your own text.
+src/corpus_klingon.h
+*.corpus
+corpus_klingon.txt
+
+# Saved model checkpoints
+*.model.bin
+
+# OS / IDE
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/

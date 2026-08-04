@@ -1,0 +1,16 @@
+// corpus_klingon.h.example — PLACEHOLDER corpus.
+//
+// The real training corpus is intentionally NOT shipped with this repo.
+// The engine is the point; bring your own corpus. See CORPUS.md.
+//
+// TO USE:
+//   1. Put your training text in a plain .txt file (one sample per line).
+//   2. Run:  python tools/gen_header.py your_text.txt src/corpus_klingon.h
+//   3. Build and flash.
+//
+// The tiny placeholder below only exists so the project compiles out of the
+// box. It will NOT produce anything meaningful — replace it with real text.
+#pragma once
+#define KLIN_CORPUS_LEN 64
+static const char KLIN_CORPUS[] =
+"nuqneH\nQapla'\ntlhIngan maH\nHeghlu'meH QaQ jajvam\nbatlh bIHeghjaj\n";
