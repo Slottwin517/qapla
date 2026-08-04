@@ -1,190 +1,192 @@
-*Este texto ha sido redactado con asistencia de una IA. Ojo: asistencia no significa que lo haya escrito. Significa que ha corregido, revisado y completado algunas partes, pero el autor es humano (o eso creo).*
+*This text was written with the assistance of an AI. Careful: assistance doesn't mean the AI wrote it. It means it corrected, reviewed and filled in some parts, but the author is human (or so I believe).*
+
+*[Léeme en español](README.es.md)*
 
 # Qapla' Project
-## Así se entrena un transformer desde cero en un ESP32-S3 de 8 pavos.
+## This is how you train a transformer from scratch on an eight-buck ESP32-S3.
 
-*El GPT (en Klingon) que nadie pidió pero todos necesitábamos.*
+*The (Klingon) GPT nobody asked for but everybody needed.*
 
-![Qapla' entrenando en un ESP32-S3](assets/training-alt.jpg)
+![Qapla' training on an ESP32-S3](assets/training-alt.jpg)
 
-**¿Y por qué lo necesitábamos?** Porque damos por hecho que entrenar un modelo requiere una GPU o un datacenter. Y no siempre: a veces basta algo tan pequeño y barato como un micro de 8 pavos para entrenar uno desde cero.
+**And why did we need it?** Because we take for granted that training a model requires a GPU or a datacenter. Not always: sometimes something as small and as cheap as an eight-buck micro is enough to train one from scratch.
 
-**Vuelve a leer: entrenar desde cero.**
-No ejecutar un modelo pre-cocinado. Entrenar. Forward, backprop y actualización de pesos, dentro del chip.
+**Read that again: train. From scratch.**
+Not run a pre-cooked model. Train. Forward pass, backprop and weight updates, inside the chip.
 
-## ¿Qué es Qapla'?
+## What is Qapla'?
 
-La IA en el edge no es nueva. TinyML lleva años haciendo inferencia en microcontroladores, los ports de llama2.c de Karpathy metieron transformers de ~260K parámetros en un ESP32, y hace nada un proyecto brillante logró correr un modelo de casi 29 millones de parámetros en un ESP32-S3 de 8 dólares. Son trabajos excelentes, y aunque casualmente se han solapado en el tiempo con este experimento, no han sido nuestro modelo a seguir.
+Edge AI is nothing new. TinyML has been doing inference on microcontrollers for years, community ports of llama2.c — Andrej Karpathy's minimalist project — put ~260K-parameter transformers on an ESP32, and just recently a brilliant project got a model of almost 29 million parameters running on an $8 ESP32-S3. They're excellent pieces of work, and although they happen to have overlapped in time with this experiment, they weren't the model we were following.
 
-El proyecto [esp32-ai](https://github.com/slvDev/esp32-ai) de Slava S. (slvDev) y otros similares comparten una cosa: son inferencia. El modelo nace en otro sitio (una GPU, un datacenter), se entrena con sus datos, se cuantiza, y solo entonces se carga en el chip para que lo ejecute. El cerebro se cocina fuera y se sirve dentro.
+The [esp32-ai](https://github.com/slvDev/esp32-ai) project by Slava S. (slvDev), and others like it, all share one thing: they are inference. The model is born somewhere else — a GPU, a datacenter — trained on its data, quantized, and only then loaded onto the chip so it can *run* it. The brain is cooked outside and served on-chip.
 
-Nosotros nos hicimos otra pregunta: ¿y qué pasa cuando el modelo no puede nacer fuera? ¿Qué pasa cuando no puede venir pre-entrenado, porque los datos que necesita aprender no existen hasta que el dispositivo está en su sitio, no puede llevarlos cargados, o no tiene internet para descargarlos?
+We asked ourselves a different question: **what happens when the model can't be born outside?** What happens when it can't come pre-trained — because the data it needs to learn doesn't exist until the device is *in place* — can't carry that data with it, and has no internet to download it?
 
-Sabemos que te estás preguntando: "Vale, pero... ¿por qué iba a necesitar alguien entrenar un transformer en un ESP32?". Y es una buena pregunta. A lo mejor la respuesta es "para nada". Pero... puestos a ponernos creativos, imagina esto: un sensor pegado a una máquina agrícola en mitad del campo, que tiene que aprender la vibración normal de esa máquina concreta (distinta a la de cualquier otra del mundo) para detectar cuándo algo va mal y hacer mantenimiento preventivo (y no, no me vas a pillar: he dicho que no hay internet, pero... ¿LoRa? ;). O piensa en un sensor en una parcela que aprende cómo se seca ese terreno concreto (su suelo, su sol, su drenaje) y predice cuándo tocará regar, antes de que la planta sufra. En esos casos (y otros que se nos ocurren) los datos no existían hasta que el dispositivo se instaló: nadie pudo pre-entrenarlos. El chip tiene que aprender sobre la marcha, solo, ahí donde está.
+We know what you're thinking: "Fine, but… why would anyone need to train a transformer on an ESP32?" And it's a fair question. Maybe the answer is "no reason at all". But… if we're going to get creative, picture this: a sensor bolted to a piece of farm machinery in the middle of a field, which has to learn the normal vibration of *that specific machine* (different from any other machine in the world) to spot when something's going wrong and schedule maintenance before it breaks (and no, you won't catch me out: I said there's no internet, but… LoRa? ;). Or picture a sensor in a plot of land that learns how *that particular* soil dries out — its earth, its sun, its drainage — and predicts when it'll need watering, before the plants suffer. In those cases (and others we can think of) the data didn't exist until the device was installed: nobody could have pre-trained it. The chip has to learn on the fly, alone, right where it stands.
 
-Nosotros no tenemos una máquina agrícola a mano para experimentar. Así que, para poner a prueba la capacidad de aprendizaje real de un ESP32, diseñamos el experimento con lo único que sí teníamos: el lenguaje. ¿Hasta dónde puede llegar un chip de 8 pavos aprendiendo un idioma desde cero, sin ayuda de nadie?
+We don't have a piece of farm machinery lying around to experiment with. So, to put the real learning ability of an ESP32 to the test, we designed the experiment around the only thing we did have: **language.** How far can an eight-buck chip get, learning a language from scratch, with nobody's help?
 
-## ¿Qué implica entrenar en un micro?
+## What does training on a micro actually mean?
 
-Entrenar dentro de un micro de 8 pavos impone reglas del juego que un datacenter no tiene. Y esas reglas condicionan todo lo demás:
+Training inside an eight-buck micro imposes rules of the game a datacenter doesn't have. And those rules dictate everything else:
 
-**Una vez más, la memoria manda.** Un ESP32-S3 tiene unos pocos MB de RAM/PSRAM, no gigabytes. Eso pone un techo al tamaño del modelo: aquí hablamos de cientos de miles de parámetros, no de millones. Un modelo que "cabe" y se entrena en el chip es, por fuerza, pequeño.
+**Once again, memory rules.** An ESP32-S3 has a few MB of RAM/PSRAM, not gigabytes. That caps the size of the model: we're talking hundreds of thousands of parameters here, not millions. A model that "fits" and trains on the chip is, by necessity, small.
 
-**El modelo pequeño manda sobre la tarea.** Un modelo de este tamaño puede aprender la *estructura* de un idioma (cómo se forman las palabras, la fonotáctica, algo de gramática), pero no la *semántica* profunda de una lengua entera. La tarea tiene que estar a la medida del modelo.
+**The small model rules the task.** A model this size can learn the *structure* of a language (how words are built, its phonotactics, some grammar), but not the deep *semantics* of an entire tongue. The task has to be cut to the model's size.
 
-**Y el corpus manda sobre el resultado.** Con un modelo pequeño no necesitas gigabytes de texto. Necesitas un corpus compacto, limpio y con estructura. Y, si vas a publicarlo, lo necesitas libre de líos de copyright.
+**And the corpus rules the result.** With a small model you don't need gigabytes of text. You need a corpus that is compact, clean and structured. And, if you're going to publish it, you need it free of copyright headaches.
 
-Junta las tres restricciones (modelo pequeño, tarea acotada, corpus limpio y compacto) y la pregunta se vuelve concreta: *¿qué idioma cumple todo eso a la vez?*
+Put the three constraints together — small model, narrow task, clean and compact corpus — and the question becomes concrete: *which language ticks all of those at once?*
 
-Podría decirte que hicimos un brainstorming para decidir con qué idioma podríamos experimentar en esta primera fase, pero a veces es mejor ceñirse a aquello de "la primera idea suele ser la buena"… y en este caso concreto, la primera lengua que se nos vino a la cabeza… fue el **Klingon.**
+I could tell you we ran a brainstorming session to decide which language to experiment with in this first phase, but sometimes it's better to stick to the old "the first idea is usually the good one"… and in this particular case, the first language that came to mind… was **Klingon.**
 
-## El lenguaje Klingon
+## The Klingon language
 
-Sí, Klingon. El idioma de los guerreros de *Star Trek*. Y si sigues leyendo descubrirás que la elección tiene menos de friki y más de ingeniería de lo que parece.
+Yes, Klingon. The language of the *Star Trek* warriors. And if you keep reading you'll find the choice has less of the nerd about it and more of the engineer than it seems.
 
-El Klingon no es un galimatías que escupe palabros que suenan a alienígena y ya. Lo creó el lingüista Marc Okrand en 1984, y es una lengua construida con fonología, gramática y morfología sistemáticas: tiene un orden de palabras poco común (objeto-verbo-sujeto) y una morfología con sus reglas estrictas. En otras palabras: tiene estructura real que aprender, que es justo lo que necesita un modelo pequeño para demostrar que aprende de verdad y no memoriza ruido.
+Klingon isn't gibberish that spits out alien-sounding noises and calls it a day. It was created by the linguist Marc Okrand in 1984, and it is a constructed language with systematic phonology, grammar and morphology: it has an unusual word order (object-verb-subject) and a morphology with strict rules. In other words: it has real structure to learn, which is exactly what a small model needs in order to prove it's really learning and not just memorising noise.
 
-Y encaja con nuestras restricciones:
+And it fits our constraints:
 
-- **Estructura rica, vocabulario acotado.** Suficiente gramática para que el modelo tenga algo que capturar, pero un corpus lo bastante pequeño como para caber en las reglas del micro.
-- **Alfabeto reducido.** Trabajando carácter a carácter, un vocabulario de ~30 símbolos mantiene el modelo diminuto —justo lo que manda la memoria del ESP32—.
-- **Corpus limpio y libre.** Existe un diccionario comunitario con licencia abierta (boQwI'), así que podíamos entrenar y compartir sin pisar terreno legal ajeno.
+- **Rich structure, bounded vocabulary.** Enough grammar for the model to have something to capture, but a corpus small enough to fit the micro's rules.
+- **Reduced alphabet.** Working character by character, a vocabulary of ~30 symbols keeps the model tiny — exactly what the ESP32's memory demands.
+- **A clean, free corpus.** There's a community dictionary under an open licence (boQwI'), so we could train and share without stepping on anyone else's legal turf.
 
-Dicho de otro modo: el Klingon es un campo de pruebas ideal. Un idioma de verdad, con gramática de verdad, pero de un tamaño que cabe en la palma de la mano. El laboratorio perfecto para exprimir el motor antes de llevarlo, quizá en otra fase del proyecto, a otros idiomas minoritarios reales, con hablantes reales. ¿Sami? ¿Quechua? ¿Náhuatl? Eso… es otra historia.
+Put another way: Klingon is an ideal testbed. A real language, with real grammar, but of a size that fits in the palm of your hand. The perfect lab in which to squeeze the engine before taking it — perhaps in another phase of the project — to real minority languages, with real speakers. Sami? Quechua? Nahuatl? That… is another story.
 
-Ah, y sí: hay que reconocer que mola. Que un chip low cost susurre Klingon en una pantallita OLED de 1,3" tiene algo de friki, pero también algo de magia. Pero eso… solo es el bonus.
+Oh, and yes: it's undeniably cool. A low-cost chip whispering Klingon on a 1.3" OLED has something of the nerd about it, but something of magic too. But that… is just the bonus.
 
-**qapla'.** *(En Klingon: "éxito". Nos pareció el nombre correcto.)*
+**qapla'.** *(Klingon for "success". It seemed like the right name.)*
 
-## Qué NO es (seamos sinceros)
+## What it is NOT (let's be honest)
 
-Para que nadie se lleve una idea equivocada, y porque el rigor importa:
+So nobody walks away with the wrong idea, and because rigour matters:
 
-**No es un ChatGPT de bolsillo.** No conversa, no responde preguntas, no razona. Es un modelo generativo diminuto que aprende la *forma* de un idioma, no su significado.
+**It is not a pocket ChatGPT.** It doesn't chat, doesn't answer questions, doesn't reason. It's a tiny generative model that learns the *shape* of a language, not its meaning.
 
-**No genera Klingon semánticamente perfecto.** Aprende estructura —prefijos, sufijos, orden de palabras, cómo suenan las frases— y produce texto que *parece* Klingon y respeta muchas de sus reglas. Pero no esperes frases con sentido pleno que un klingonólogo aprobaría sin reparos (si alguien en la Enterprise recibiera un mensaje de nuestro ESP32, probablemente acabaría provocando un conflicto diplomático). Y en cualquier caso, ni existe suficiente Klingon en el mundo para lograrlo, ni cabría en el chip el modelo que haría falta.
+**It does not produce semantically perfect Klingon.** It learns structure — prefixes, suffixes, word order, how phrases sound — and produces text that *looks* like Klingon and respects many of its rules. But don't expect fully meaningful sentences that a Klingon scholar would sign off on without complaint (if someone aboard the Enterprise received a message from our ESP32, it would probably end up causing a diplomatic incident). And in any case, there isn't enough Klingon in the world to pull that off, nor would the model it would take fit on the chip.
 
-**No es inferencia disfrazada.** No hay ningún modelo pre-entrenado escondido. El chip arranca con pesos aleatorios y sin conocimiento previo del Klingon, y aprende desde cero. Lo que ves es aprendizaje real, no un modelo cocinado en otro sitio y servido aquí.
+**It is not inference in disguise.** There is no pre-trained model hidden anywhere. The chip starts with random weights and no prior knowledge of Klingon, and learns from scratch. What you're seeing is real learning, not a model cooked somewhere else and served here.
 
-**No es rápido.** Seamos serios: lo hemos repetido hasta la saciedad pero… ¡es un micro de 8 pavos, no una GPU! Entrenar lleva horas. Esa es justo la gracia: que sea lento y aun así funcione.
+**It is not fast.** Let's be serious: we've said it to death, but… it's an eight-buck micro, not a GPU! Training takes hours. That's precisely the point: that it's slow and still works.
 
-Lo que **sí** es: la prueba de que un microcontrolador humilde y con espíritu maker puede entrenar un modelo de lenguaje desde cero, íntegramente a bordo. Ni más, ni menos. Que no es poco.
+What it **is**: proof that a humble microcontroller with a maker's spirit can train a language model from scratch, entirely on board. No more, no less. Which is no small thing.
 
-## Cómo funciona
+## How it works
 
-Aquí está lo que de verdad importa, y lo que puedes verificar tú mismo en el código. Todo el ciclo de aprendizaje ocurre a bordo:
+Here's what really matters, and what you can verify for yourself in the code. The entire learning cycle happens on board:
 
-**Dentro del ESP32-S3:**
-- ✓ Inicialización aleatoria de los pesos (atento al seed, ejem)
-- ✓ Lectura y tokenización del corpus
+**Inside the ESP32-S3:**
+- ✓ Random initialisation of the weights (mind the seed, ahem)
+- ✓ Reading and tokenising the corpus
 - ✓ Forward pass
-- ✓ Cálculo de la loss (cross-entropy)
-- ✓ Backpropagation (gradientes derivados a pelo)
-- ✓ Actualización de pesos (SGD con momentum + cosine LR)
-- ✓ Guardado del mejor modelo en flash (LittleFS)
-- ✓ Generación de texto con los pesos aprendidos
+- ✓ Loss computation (cross-entropy)
+- ✓ Backpropagation (gradients derived by hand)
+- ✓ Weight updates (SGD with momentum + cosine LR)
+- ✓ Saving the best model to flash (LittleFS)
+- ✓ Text generation with the learned weights
 
-**Fuera del ESP32-S3:**
-- ✗ Nada.
+**Outside the ESP32-S3:**
+- ✗ Nothing.
 
-### La arquitectura
+### The architecture
 
-No hay nada nuevo aquí. Es un transformer minúsculo pero completo: un bloque, atención causal de una sola cabeza, embeddings atados (*tied weights*), FFN con ReLU y LayerNorm. Trabaja carácter a carácter, con un vocabulario de ~31 símbolos. En total, **~319.000 parámetros**.
+There's nothing new here. It's a tiny but complete transformer: one block, single-head causal attention, tied weights, a ReLU FFN and LayerNorm. It works character by character, with a vocabulary of ~31 symbols. In total, **~319,000 parameters**.
 
-### El backprop, a mano
+### The backprop, by hand
 
-Aquí no hay PyTorch ni autograd. Cada derivada del forward pass está escrita explícitamente en C. Para asegurarnos de que no había errores, contrastamos numéricamente esos gradientes contra una implementación de referencia en PyTorch (*gradient checking*) antes de meterle mano al chip. Es la parte más delicada y la que más mola ver funcionando.
+There's no PyTorch and no autograd here. Every derivative of the forward pass is written out explicitly in C. To make sure there were no mistakes, we checked those gradients numerically against a PyTorch reference implementation (*gradient checking*) before laying a finger on the chip. It's the most delicate part and the most fun to watch working.
 
-### La proeza no son los parámetros: es la memoria
+### The feat isn't the parameters: it's the memory
 
-Un modelo de 319K parámetros "solo" ocupa ~1,3 MB. Pero **entrenar** no es solo tener los pesos. Hace falta, a la vez y en memoria: los pesos, una copia igual de grande para los gradientes, otra para el momento del optimizador, otra para guardar el mejor modelo, más todas las activaciones intermedias que el backward necesita, más el corpus. En total, varios MB en la PSRAM del chip.
+A 319K-parameter model "only" takes ~1.3 MB. But **training** isn't just holding the weights. You need, all at once and in memory: the weights, an equally large copy for the gradients, another for the optimiser momentum, another to keep the best model, plus all the intermediate activations the backward pass needs, plus the corpus. Several MB in the chip's PSRAM, all told.
 
-Esa es la diferencia real entre *inferir* (te basta con los pesos) y *entrenar* (pesos + gradientes + momento + activaciones). Y es justo lo que hace este proyecto distinto: no guarda un modelo para ejecutarlo, lo **entrena** con todo lo que eso arrastra.
+That's the real difference between *inferring* (the weights are enough) and *training* (weights + gradients + momentum + activations). And it's exactly what makes this project different: it doesn't store a model to run it, it **trains** it, with everything that drags along.
 
-## Reprodúcelo
+## Reproduce it
 
-Este repo publica el **motor**, no el corpus. La gracia está en que el chip aprenda *tu* texto, así que el corpus lo pones tú.
+This repo ships the **engine**, not the corpus. The whole point is that the chip learns *your* text, so the corpus is on you.
 
-**Lo que necesitas:** un ESP32-S3 con PSRAM (el N16R8), una OLED SH1106 por I2C (opcional, pero es media diversión), y PlatformIO.
+**What you'll need:** an ESP32-S3 with PSRAM (the N16R8), an SH1106 OLED over I2C (optional, but it's half the fun), and PlatformIO.
 
 ```bash
-# 1. Tu corpus, en texto plano (una muestra por línea)
-python tools/gen_header.py mi_texto.txt src/corpus_klingon.h
+# 1. Your corpus, in plain text (one sample per line)
+python tools/gen_header.py my_text.txt src/corpus_klingon.h
 
-# 2. Compila y flashea
+# 2. Build and flash
 pio run -t upload
 
-# 3. Míralo aprender: la loss bajando en directo
+# 3. Watch it learn: the loss dropping live
 pio device monitor
 ```
 
-Y ya está. El chip arranca con pesos aleatorios, entrena, guarda el mejor modelo en flash y, al siguiente arranque, lo carga y genera. Si lo desenchufas a mitad, pierdes lo aprendido desde el último checkpoint; si lo desenchufas después de terminar, el cerebro sigue ahí.
+And that's it. The chip starts with random weights, trains, saves the best model to flash and, on the next boot, loads it and generates. Unplug it halfway through and you lose whatever it learned since the last checkpoint; unplug it after it's done and the brain is still there.
 
-**Un aviso:** esto tarda horas. Muchas. Incluso días. No es un bug: es entrenar un transformer de cero en un ESP32-S3 de 8 pavos.
+**One warning:** this takes hours. Many. Even days. It's not a bug: it's training a transformer from scratch on an eight-buck ESP32-S3.
 
-## Los números
+## The numbers
 
-Todo esto ocurrió dentro del chip, alimentado por un cargador de móvil.
+All of this happened inside the chip, powered by a phone charger.
 
-![Entrenando](assets/training.jpg)
+![Training](assets/training.jpg)
 
 | | |
 |---|---|
-| **Parámetros** | ~319.000 |
-| **Vocabulario** | 31 caracteres |
-| **Contexto** | 32 caracteres |
-| **Optimizador** | SGD con momentum (0.9) + cosine LR |
-| **Pasos** | 5.000 |
-| **Duración** | ~2 días enchufado a un cargador |
-| **Hardware** | ESP32-S3 N16R8 + OLED SH1106 |
+| **Parameters** | ~319,000 |
+| **Vocabulary** | 31 characters |
+| **Context** | 32 characters |
+| **Optimiser** | SGD with momentum (0.9) + cosine LR |
+| **Steps** | 5,000 |
+| **Duration** | ~2 days plugged into a charger |
+| **Hardware** | ESP32-S3 N16R8 + SH1106 OLED |
 
-Y la loss bajando, tal cual se veía en la pantalla:
+And the loss dropping, exactly as it looked on the screen:
 
-| Paso | loss (batch) | media móvil |
+| Step | loss (batch) | moving average |
 |---|---|---|
-| arranque | 2.298 | 2.216 |
-| 1.495 | 2.193 | 2.137 |
-| 2.549 | 1.982 | 2.035 |
-| 4.905 | 1.996 | **1.871** |
+| boot | 2.298 | 2.216 |
+| 1,495 | 2.193 | 2.137 |
+| 2,549 | 1.982 | 2.035 |
+| 4,905 | 1.996 | **1.871** |
 
-![Paso final](assets/final-step.jpg)
+![Final step](assets/final-step.jpg)
 
-La media móvil es la que importa: la loss de cada batch salta mucho (depende de qué frases le tocaran), pero la media baja de forma sostenida. **El chip terminó en ~1.87.**
+The moving average is the one that matters: each batch's loss jumps around a lot (it depends which sentences it got), but the average comes down steadily. **The chip finished at ~1.87.**
 
-### Y esto es lo que escupe
+### And this is what it spits out
 
-![Klingon generado](assets/klingon-output.jpg)
+![Generated Klingon](assets/klingon-output.jpg)
 
 ```
 hIngan motlh puS ruq tuq DujDaq SISwI' nge'vI'
 vIn SuvwI' yIvwI' qarghtaHvIS SIchoH
 ```
 
-No es Klingon con sentido pleno —ya avisamos—, pero mira la morfología:
+It's not fully meaningful Klingon — we did warn you — but look at the morphology:
 
-- **`SuvwI'`** es *guerrero*: la raíz `Suv` (luchar) más el sufijo `-wI'` ("el que hace"). Palabra real, bien construida.
-- **`DujDaq`** es *en la nave*: `Duj` (nave) más el sufijo locativo `-Daq`.
-- **`qarghtaHvIS`** lleva `-taHvIS` (*mientras*, continuo + adverbial), un sufijo compuesto pegado donde toca.
-- Y **`hIngan`** se queda a dos letras de `tlhIngan`, que es literalmente la palabra "klingon".
+- **`SuvwI'`** is *warrior*: the root `Suv` (to fight) plus the suffix `-wI'` ("one who does"). A real word, correctly built.
+- **`DujDaq`** is *on the ship*: `Duj` (vessel) plus the locative suffix `-Daq`.
+- **`qarghtaHvIS`** carries `-taHvIS` (*while*, continuous + adverbial), a compound suffix stuck exactly where it belongs.
+- And **`hIngan`** lands two letters short of `tlhIngan`, which is literally the word for "Klingon".
 
-Otras palabras están bien formadas pero no existen: el modelo aprendió las **reglas**, no el diccionario. Que es exactamente lo que dijimos que haría.
+Other words are well formed but don't exist: the model learned the **rules**, not the dictionary. Which is exactly what we said it would do.
 
-Nadie le enseñó esos sufijos. Los dedujo solo, carácter a carácter, dentro de un micro de 8 pavos.
+Nobody taught it those suffixes. It worked them out on its own, character by character, inside an eight-buck micro.
 
-## Y de aquí, ¿a dónde?
+## And from here, where?
 
-Cualquiera con tiempo, curiosidad y ganas puede escribir un backprop a mano y entrenar un modelito en un micro. Eso no es lo raro.
+Anyone with time, curiosity and enough willpower can write a backprop by hand and train a little model on a micro. That's not the hard part.
 
-Lo interesante viene después: llevar el motor al límite con una tarea de verdad, un idioma real con hablantes reales y un corpus mucho más grande del que da el Klingon. Ahí se acaba el laboratorio y empieza la ingeniería de verdad: que un modelo más capaz quepa y aprenda en un chip que no ha crecido.
+The interesting bit comes next: pushing the engine to its limit with a real task — a real language, with real speakers and a corpus far larger than Klingon can offer. That's where the lab ends and the actual engineering begins: getting a more capable model to fit and learn on a chip that hasn't grown.
 
-Tenemos alguna idea. Pero eso, si llega, será otra historia.
+We have an idea or two. But that, if it happens, is another story.
 
-## Licencia
+## Licence
 
-Código bajo **Apache 2.0**. Cógelo, tócalo, métele tu idioma.
+Code under **Apache 2.0**. Take it, hack it, feed it your own language.
 
 ---
 
-*Todo el corpus de entrenamiento proviene de fuentes con licencia libre (boQwI' / klingon-assistant-data, Apache 2.0). El idioma Klingon fue creado por Marc Okrand; Klingon, Star Trek y marcas asociadas son propiedad de sus respectivos titulares (CBS Studios / Paramount). Este es un proyecto educativo y de investigación de código abierto, sin afiliación ni respaldo de dichos titulares. Ver [CORPUS.md](CORPUS.md) para el detalle de fuentes y licencias.*
+*All the training corpus comes from freely licensed sources (boQwI' / klingon-assistant-data, Apache 2.0). The Klingon language was created by Marc Okrand; Klingon, Star Trek and associated marks are the property of their respective owners (CBS Studios / Paramount). This is an open-source, educational and research project, not affiliated with or endorsed by them. See [CORPUS.md](CORPUS.md) for the details of sources and licences.*
 
-*Ah, y la semilla del generador de números aleatorios es 1701. Si no sabes por qué, este no es tu repo.*
+*Oh, and the random number generator's seed is 1701. If you don't know why, this isn't your repo.*
