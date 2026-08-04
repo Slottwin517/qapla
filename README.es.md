@@ -144,10 +144,11 @@ Y la loss bajando, tal cual se veía en la pantalla:
 
 | Paso | loss (batch) | media móvil |
 |---|---|---|
-| arranque | 2.298 | 2.216 |
 | 1.495 | 2.193 | 2.137 |
 | 2.549 | 1.982 | 2.035 |
 | 4.905 | 1.996 | **1.871** |
+
+*(No tenemos foto del primer arranque: cuando se nos ocurrió documentarlo, el chip ya llevaba un buen rato a lo suyo.)*
 
 ![Paso final](assets/final-step.jpg)
 
@@ -189,4 +190,4 @@ Código bajo **Apache 2.0**. Cógelo, tócalo, métele tu idioma.
 
 *Todo el corpus de entrenamiento proviene de fuentes con licencia libre (boQwI' / klingon-assistant-data, Apache 2.0). El idioma Klingon fue creado por Marc Okrand; Klingon, Star Trek y marcas asociadas son propiedad de sus respectivos titulares (CBS Studios / Paramount). Este es un proyecto educativo y de investigación de código abierto, sin afiliación ni respaldo de dichos titulares. Ver [CORPUS.md](CORPUS.md) para el detalle de fuentes y licencias.*
 
-*Ah, y la semilla del generador de números aleatorios es 1701. Si no sabes por qué, este no es tu repo.*
+*Ah, y la semilla del generador de números aleatorios es 1701. Si no sabes por qué… a lo mejor, y solo a lo mejor, este no es tu repo ;)*

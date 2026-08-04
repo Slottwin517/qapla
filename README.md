@@ -144,10 +144,11 @@ And the loss dropping, exactly as it looked on the screen:
 
 | Step | loss (batch) | moving average |
 |---|---|---|
-| boot | 2.298 | 2.216 |
 | 1,495 | 2.193 | 2.137 |
 | 2,549 | 1.982 | 2.035 |
 | 4,905 | 1.996 | **1.871** |
+
+*(We have no photo of the very first boot: by the time it occurred to us to document it, the chip had already been at it for a good while.)*
 
 ![Final step](assets/final-step.jpg)
 
@@ -189,4 +190,4 @@ Code under **Apache 2.0**. Take it, hack it, feed it your own language.
 
 *All the training corpus comes from freely licensed sources (boQwI' / klingon-assistant-data, Apache 2.0). The Klingon language was created by Marc Okrand; Klingon, Star Trek and associated marks are the property of their respective owners (CBS Studios / Paramount). This is an open-source, educational and research project, not affiliated with or endorsed by them. See [CORPUS.md](CORPUS.md) for the details of sources and licences.*
 
-*Oh, and the random number generator's seed is 1701. If you don't know why, this isn't your repo.*
+*Oh, and the random number generator's seed is 1701. If you don't know why… then maybe, just maybe, this isn't your repo ;)*
