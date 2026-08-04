@@ -113,12 +113,15 @@ Esa es la diferencia real entre *inferir* (te basta con los pesos) y *entrenar* 
 
 ## Reprodúcelo
 
-Este repo publica el **motor**, no el corpus. La gracia está en que el chip aprenda *tu* texto, así que el corpus lo pones tú.
+El corpus con el que entrenamos va incluido (`corpus/klingon.txt`, Apache 2.0, regenerable con `corpus/build_corpus.py`), así que puedes clonar y arrancar sin buscar datos por ahí. Pero el experimento interesante no es repetir el nuestro: es apuntar esto a *tu* texto.
 
 **Lo que necesitas:** un ESP32-S3 con PSRAM (el N16R8), una OLED SH1106 por I2C (opcional, pero es media diversión), y PlatformIO.
 
 ```bash
-# 1. Tu corpus, en texto plano (una muestra por línea)
+# 1. El nuestro, para reproducir...
+python tools/gen_header.py corpus/klingon.txt src/corpus_klingon.h
+
+#    ...o el tuyo, para descubrir algo nuevo
 python tools/gen_header.py mi_texto.txt src/corpus_klingon.h
 
 # 2. Compila y flashea

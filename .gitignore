@@ -8,11 +8,8 @@
 *.elf
 *.o
 
-# The corpus is NOT published on purpose — bring your own.
-# See CORPUS.md for how to generate src/corpus_klingon.h from your own text.
+# Generated from a corpus by tools/gen_header.py — not source.
 src/corpus_klingon.h
-*.corpus
-corpus_klingon.txt
 
 # Saved model checkpoints
 *.model.bin

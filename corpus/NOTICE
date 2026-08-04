@@ -1,0 +1,33 @@
+Qapla' Project — training corpus
+================================
+
+The file `klingon.txt` in this directory is derived from:
+
+    klingon-assistant-data (the data behind the boQwI' dictionary)
+    https://github.com/De7vID/klingon-assistant-data
+    Licensed under the Apache License, Version 2.0
+
+What we changed: we extracted the example sentences from that dataset, dropped
+any sentence containing characters outside the romanised Klingon orthography
+plus basic punctuation, dropped single-word entries, deduplicated, and repeated
+the remainder 15 times so a very small char-level model has enough to chew on.
+`build_corpus.py` in this directory performs exactly those steps and will
+regenerate the file from the original source.
+
+A copy of the Apache License, Version 2.0 is included at the root of this
+repository (LICENSE).
+
+A note on what is NOT here
+--------------------------
+
+The training run documented in the README used this corpus plus a supplementary
+list of frequent Klingon words drawn from a third-party corpus site whose
+licensing we could not verify. We are not redistributing that part. The corpus
+published here is therefore the clean, Apache 2.0 subset — same character
+vocabulary, about 81% of the bytes. Expect results in the same range, not an
+exact byte-for-byte reproduction of our numbers.
+
+The Klingon language (tlhIngan Hol) was created by Marc Okrand. Klingon, Star
+Trek and associated marks are the property of their respective owners (CBS
+Studios / Paramount). This is an open-source, educational and research project,
+not affiliated with or endorsed by them.

@@ -113,13 +113,16 @@ That's the real difference between *inferring* (the weights are enough) and *tra
 
 ## Reproduce it
 
-This repo ships the **engine**, not the corpus. The whole point is that the chip learns *your* text, so the corpus is on you.
+The corpus we trained on is in the box (`corpus/klingon.txt`, Apache 2.0, regenerable with `corpus/build_corpus.py`), so you can clone and run without hunting for data. But the interesting experiment isn't repeating ours — it's pointing this at *your* text.
 
 **What you'll need:** an ESP32-S3 with PSRAM (the N16R8), an SH1106 OLED over I2C (optional, but it's half the fun), and PlatformIO.
 
 ```bash
-# 1. Your corpus, in plain text (one sample per line)
-python tools/gen_header.py my_text.txt src/corpus_klingon.h
+# 1. Ours, to reproduce...
+python tools/gen_header.py corpus/klingon.txt src/corpus_klingon.h
+
+#    ...or yours, to find out something new
+python tools/gen_header.py your_text.txt src/corpus_klingon.h
 
 # 2. Build and flash
 pio run -t upload
