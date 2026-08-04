@@ -28,7 +28,13 @@
 #define NT 32
 #endif
 #define NF (4*NC)
+// float on the chip; define HANDGPT_DOUBLE to build the gradient check
+// in double precision on a PC (see tests/). Firmware behaviour is unchanged.
+#ifdef HANDGPT_DOUBLE
+typedef double real;
+#else
 typedef float real;
+#endif
 
 typedef struct {
   real Wte[NV*NC], Wpe[NT*NC];
@@ -40,9 +46,15 @@ typedef struct {
   real gf[NC], bf[NC];
 } Model;
 
+#ifdef HANDGPT_DOUBLE
+#define EXPF exp
+#define SQRTF sqrt
+#define LOGF log
+#else
 #define EXPF expf
 #define SQRTF sqrtf
 #define LOGF logf
+#endif
 
 typedef struct {
   int X[NT], Y[NT];

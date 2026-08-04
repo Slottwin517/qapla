@@ -14,7 +14,20 @@
 #include <Wire.h>
 #include <LittleFS.h>
 #include "handgpt.h"
-#include "corpus_klingon.h"
+
+// Bring your own corpus: generate src/corpus_klingon.h with tools/gen_header.py
+// (see CORPUS.md). If it isn't there, we fall back to a tiny placeholder so the
+// project still builds straight after cloning — it won't learn anything useful.
+#if defined(__has_include)
+#  if __has_include("corpus_klingon.h")
+#    include "corpus_klingon.h"
+#  else
+#    include "corpus_klingon.h.example"
+#    warning "No corpus_klingon.h found - building with the placeholder corpus. See CORPUS.md."
+#  endif
+#else
+#  include "corpus_klingon.h"
+#endif
 
 #define FORCE_RETRAIN 0
 #define BATCH        8
@@ -67,10 +80,19 @@ void oled_gen(const char*full,int len){
     line[n]=0; u8g2.drawStr(0,24+row*10,line);
   } u8g2.sendBuffer();
 }
-void build_vocab(){
+bool build_vocab(){
   for(int i=0;i<256;i++)STOI[i]=-1; V=0;
   for(int i=0;i<KLIN_CORPUS_LEN;i++){ unsigned char ch=(unsigned char)KLIN_CORPUS[i];
-    if(STOI[ch]<0){ STOI[ch]=V; if(V<NV)ITOS[V]=(char)ch; V++; } }
+    if(STOI[ch]<0){
+      // Hard stop: more distinct bytes than NV would index Wte out of bounds.
+      // Note this counts BYTES, so any multi-byte UTF-8 character costs several slots.
+      if(V>=NV){
+        Serial.printf("ERROR: el corpus usa mas de %d bytes distintos (encontrado 0x%02X).\n",NV,ch);
+        Serial.println("Reduce el vocabulario del corpus o sube NV en handgpt.h.");
+        return false;
+      }
+      STOI[ch]=V; ITOS[V]=(char)ch; V++; } }
+  return true;
 }
 // file format: [float loss][raw model bytes]
 bool save_model(Model*m,float loss){
@@ -164,7 +186,8 @@ void setup(){
 #if FORCE_RETRAIN
   LittleFS.remove(MODEL_PATH); Serial.println("FORCE_RETRAIN: modelo borrado.");
 #endif
-  build_vocab(); Serial.printf("vocab=%d (NV=%d)\n",V,NV);
+  if(!build_vocab()){ oled_msg("ERROR","vocab > NV"); return; }
+  Serial.printf("vocab=%d (NV=%d)\n",V,NV);
   M=(Model*)ps_malloc(sizeof(Model)); CA=(Cache*)ps_malloc(sizeof(Cache));
   if(!M||!CA){ Serial.println("FALLO ps_malloc M/CA"); oled_msg("FALLO","memoria"); return; }
   Serial.printf("PSRAM libre: %u KB\n",(unsigned)(ESP.getFreePsram()/1024));
